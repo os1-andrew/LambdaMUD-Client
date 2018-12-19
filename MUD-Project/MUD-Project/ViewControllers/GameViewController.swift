@@ -37,7 +37,7 @@ class GameViewController: UIViewController, UITextFieldDelegate {
             if let game = game{
                 DispatchQueue.main.async {
                     guard let errorMessage = game.error_msg, !errorMessage.isEmpty else {
-                        self.roomActivity = [String]()
+                        self.roomActivity = NSMutableAttributedString()
                         self.updateViews(game: game)
                         return
                     }
@@ -57,7 +57,9 @@ class GameViewController: UIViewController, UITextFieldDelegate {
             let message = messageTextField.text,
             !message.isEmpty else {return}
         sendMessageAPI(message: message) {
-            self.roomActivity.append("\(playerName): \(message)")
+            let message = NSAttributedString(string: "\(playerName): \(message)")
+            self.roomActivity.append(message)
+            self.updateChat()
             DispatchQueue.main.async {
                 self.messageTextField.resignFirstResponder()
             }
@@ -95,7 +97,7 @@ class GameViewController: UIViewController, UITextFieldDelegate {
                     self.updateViews(game: game)
                     
                     if self.currentRoom != game.title{
-                        self.roomActivity = [String]()
+                        self.roomActivity = NSMutableAttributedString()
                         self.currentRoom = game.title
                     }
                 }
@@ -131,11 +133,11 @@ class GameViewController: UIViewController, UITextFieldDelegate {
     // Parameter: None
     // Return: None
     private func updateChat(){
-        if roomActivity.isEmpty{
+        if roomActivity.length <= 0{
             activityTextView.text = "The room is dead silent"
         } else {
             DispatchQueue.main.async {
-                self.activityTextView.text = self.roomActivity.joined(separator: "\n")
+                self.activityTextView.attributedText = self.roomActivity
                 self.scrollTextViewToBottom(textView: self.activityTextView)
                 self.messageTextField.text = ""
             }
@@ -173,7 +175,12 @@ class GameViewController: UIViewController, UITextFieldDelegate {
         let _ = channel.bind(eventName: "broadcast", callback: { (data: Any?) -> Void in
             if let data = data as? [String : AnyObject] {
                 if let message = data["message"] as? String {
-                    self.roomActivity.append(message)
+                    let color = message.contains("enter")
+                        ? UIColor(red: 11/255, green: 102/255, blue: 35/255, alpha: 1.0)
+                        : UIColor(red: 102/255, green: 17/255, blue: 11/255, alpha: 1.0)
+                    let attributedString = NSAttributedString(string: "\(message) \n", attributes: [NSAttributedString.Key.foregroundColor:color])
+                    self.roomActivity.append(attributedString)
+                    self.updateChat()
                     self.getPlayerState()
                 }
             }
@@ -182,7 +189,8 @@ class GameViewController: UIViewController, UITextFieldDelegate {
         let _ = channel.bind(eventName: "broadcast_message", callback: { (data: Any?) -> Void in
             if let data = data as? [String : AnyObject] {
                 if let message = data["message"] as? String {
-                    self.roomActivity.append(message)
+                    self.roomActivity.append(NSAttributedString(string: "\(message) \n"))
+                    self.updateChat()
                 }
             }
         })
@@ -306,11 +314,8 @@ class GameViewController: UIViewController, UITextFieldDelegate {
         }
     }
     
-    private var roomActivity = [String](){
-        didSet{
-            updateChat()
-        }
-    }
+    private var roomActivity = NSMutableAttributedString()
+    
     var playerName:String!
     var playerUUID:String?
     var authToken:String?

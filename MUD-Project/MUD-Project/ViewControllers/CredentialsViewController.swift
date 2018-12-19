@@ -25,6 +25,7 @@ class CredentialsViewController: UIViewController, UITextFieldDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         updateViews()
+        usernameTextField.becomeFirstResponder()
         
     }
     //MARK: - IBActions
